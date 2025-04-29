@@ -1,0 +1,924 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Dashboard{% endblock %}
+{% block header %}
+<div class="dashboard-header">
+    <h1>Performance Dashboard</h1>
+    <div class="refresh-section">
+        Refresh Data<br>
+        Last refresh: {{ current_time }}
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Filters Section -->
+    <div class="filters-section">
+        <div class="filter-group">
+            <h3><i class="fas fa-filter"></i> Filters</h3>
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label>Select Interns:</label>
+                    <select id="intern-filter" class="select2" multiple="multiple">
+                        {% for email in emails %}
+                        <option value="{{ email }}">{{ email }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>Date Range:</label>
+                    <input type="text" id="date-range" class="date-picker" placeholder="Select date range">
+                </div>
+                <div class="filter-item">
+                    <label>Task Status:</label>
+                    <select id="status-filter" class="select2" multiple="multiple">
+                        <option value="Completed">Completed</option>
+                        <option value="Ongoing">Ongoing</option>
+                        <option value="Research">Research</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button id="apply-filters" class="btn btn-primary">
+                    <i class="fas fa-check"></i> Apply Filters
+                </button>
+                <button id="reset-filters" class="btn btn-secondary">
+                    <i class="fas fa-undo"></i> Reset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Overview -->
+    <div class="team-overview">
+        <h3><i class="fas fa-users"></i> Team Overview Analytics</h3>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-value">{{ metrics.total_interns }}</div>
+                <div class="metric-label">Total Interns</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ "%.1f"|format(metrics.avg_hours) }}</div>
+                <div class="metric-label">Avg Hours/Intern</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ "%.1f"|format(metrics.completion_rate) }}%</div>
+                <div class="metric-label">Task Completion</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">{{ "%.1f"|format(metrics.avg_tasks) }}</div>
+                <div class="metric-label">Avg Tasks/Intern</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Performance -->
+    <div class="individual-performance">
+        <h3><i class="fas fa-user-tie"></i> Individual Performance Drill-Down</h3>
+        <div class="performance-selector">
+            <select id="individual-select" class="select2">
+                <option value="">Select an intern</option>
+                {% for email in emails %}
+                <option value="{{ email }}">{{ email }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="individual-stats" class="individual-stats">
+            <!-- This will be populated via JavaScript -->
+            <div class="no-selection">
+                <i class="fas fa-user-circle"></i>
+                <p>Select an intern to view detailed performance</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-section">
+        <div class="chart-card">
+            <h4><i class="fas fa-chart-line"></i> Performance Trends Over Time</h4>
+            <div id="performance-trend-chart"></div>
+        </div>
+        <div class="chart-card">
+            <h4><i class="fas fa-chart-pie"></i> Task Status Distribution</h4>
+            <div id="task-distribution-chart"></div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // Initialize with data from Flask
+    const performanceData = {{ performance_data| tojson }};
+    const allInterns = {{ emails| tojson }};
+
+    // Initialize charts
+    function renderCharts(data) {
+        // Performance Trend Chart
+        Plotly.newPlot('performance-trend-chart', [{
+            x: data.dates,
+            y: data.completion_rates,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Completion Rate',
+            line: { color: '#3498db' }
+        }, {
+            x: data.dates,
+            y: data.attendance_rates,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Attendance Rate',
+            line: { color: '#2ecc71' }
+        }], {
+            title: 'Performance Trends Over Time',
+            yaxis: { title: 'Percentage', range: [0, 100] }
+        });
+
+        // Task Distribution Chart
+        Plotly.newPlot('task-distribution-chart', [{
+            values: data.task_counts,
+            labels: data.task_statuses,
+            type: 'pie',
+            hole: 0.4,
+            marker: {
+                colors: ['#2ecc71', '#f39c12', '#e74c3c']
+            }
+        }], {
+            title: 'Task Status Distribution'
+        });
+    }
+
+    // Individual Performance Loader
+    $('#individual-select').change(function () {
+        const email = $(this).val();
+        if (!email) {
+            $('#individual-stats').html(`
+            <div class="no-selection">
+                <i class="fas fa-user-circle"></i>
+                <p>Select an intern to view detailed performance</p>
+            </div>
+        `);
+            return;
+        }
+
+        // Simulate loading
+        $('#individual-stats').html('<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>');
+
+        // In a real app, you would fetch this data from your Flask endpoint
+        setTimeout(() => {
+            // This is mock data - replace with actual API call
+            const internData = {
+                name: email.split('@')[0],
+                completion_rate: Math.random() * 100,
+                avg_hours: (Math.random() * 3 + 4).toFixed(1),
+                deadlines_missed: Math.floor(Math.random() * 3),
+                tasks_completed: Math.floor(Math.random() * 10 + 5)
+            };
+
+            $('#individual-stats').html(`
+            <div class="individual-header">
+                <h4>Performance Analysis for ${internData.name}</h4>
+                <div class="intern-email">${email}</div>
+            </div>
+            <div class="individual-metrics">
+                <div class="individual-metric">
+                    <div class="metric-value">${internData.completion_rate.toFixed(1)}%</div>
+                    <div class="metric-label">Task Completion Rate</div>
+                </div>
+                <div class="individual-metric">
+                    <div class="metric-value">${internData.avg_hours} hrs</div>
+                    <div class="metric-label">Average Daily Hours</div>
+                </div>
+                <div class="individual-metric">
+                    <div class="metric-value">${internData.deadlines_missed}</div>
+                    <div class="metric-label">Deadlines Missed</div>
+                </div>
+                <div class="individual-metric">
+                    <div class="metric-value">${internData.tasks_completed}</div>
+                    <div class="metric-label">Tasks Completed</div>
+                </div>
+            </div>
+            <div class="individual-charts">
+                <div id="individual-trend-chart"></div>
+                <div id="individual-task-chart"></div>
+            </div>
+        `);
+
+            // Render individual charts
+            Plotly.newPlot('individual-trend-chart', [{
+                x: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                y: Array(4).fill().map(() => Math.random() * 100),
+                type: 'bar',
+                name: 'Completion Rate',
+                marker: { color: '#3498db' }
+            }], {
+                title: 'Weekly Performance Trend'
+            });
+
+            Plotly.newPlot('individual-task-chart', [{
+                values: [internData.tasks_completed, 5, 3],
+                labels: ['Completed', 'Ongoing', 'Research'],
+                type: 'pie',
+                name: 'Task Distribution',
+                marker: {
+                    colors: ['#2ecc71', '#f39c12', '#e74c3c']
+                }
+            }], {
+                title: 'Task Distribution'
+            });
+        }, 500);
+    });
+
+    // Initial render
+    renderCharts(performanceData);
+</script>
+
+<style>
+    /* Modern Color Palette */
+    :root {
+        --primary: #4361ee;
+        --secondary: #3f37c9;
+        --accent: #4895ef;
+        --success: #4cc9f0;
+        --warning: #f8961e;
+        --danger: #f72585;
+        --light: #f8f9fa;
+        --dark: #212529;
+        --text: #2b2d42;
+        --bg: #f8f9fa;
+    }
+
+    /* Header styling for centering and positioning */
+    .header {
+        text-align: center;
+        padding: 1.5rem 0;
+        margin: 0;
+        width: 100%;
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: relative;
+        z-index: 100;
+    }
+
+    /* Modern Dashboard Styling */
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Header Section */
+    .dashboard-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e4e9f2 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .dashboard-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0 0 10px 0;
+        padding: 0;
+    }
+
+    .dashboard-header .refresh-info {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .dashboard-header .refresh-info i {
+        color: #4361ee;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+
+    .nav-tab {
+        padding: 12px 24px;
+        background: white;
+        border-radius: 8px;
+        color: #4361ee;
+        text-decoration: none;
+        font-weight: 600;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .nav-tab:hover,
+    .nav-tab.active {
+        background: #4361ee;
+        color: white;
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.2);
+    }
+
+    .nav-tab i {
+        font-size: 1.1rem;
+    }
+
+    /* Filters Section */
+    .filters-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .filter-group h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.3rem;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-item {
+        flex: 1;
+        min-width: 250px;
+    }
+
+    .filter-item label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.95rem;
+    }
+
+    .select2-container,
+    .date-picker {
+        width: 100% !important;
+    }
+
+    .select2-selection,
+    .date-picker {
+        padding: 12px 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        min-height: auto;
+        font-size: 1rem;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #4361ee, #3a56d4);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #3a56d4, #2f4bc2);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: #4361ee;
+        border: 1px solid #4361ee;
+    }
+
+    .btn-secondary:hover {
+        background: rgba(67, 97, 238, 0.05);
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .dashboard-header h1 {
+            font-size: 2rem;
+        }
+
+        .filter-row {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .filter-item {
+            min-width: 100%;
+        }
+
+        .nav-tab {
+            padding: 10px 15px;
+            font-size: 0.9rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard-container {
+            padding: 15px;
+        }
+
+        .filter-actions {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .header h1 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        padding: 0;
+        letter-spacing: 0.5px;
+        position: relative;
+        display: inline-block;
+    }
+
+    /* Optional: Add a decorative element */
+    .header h1::after {
+        content: "";
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(90deg, #4361ee, #4cc9f0);
+        border-radius: 2px;
+    }
+
+    /* Ensure the header stays at top */
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    /* Container styling to push content below header */
+    .container {
+        margin-top: 20px;
+        padding: 20px;
+    }
+
+    /* Center the dashboard heading */
+    .dashboard-header h1 {
+        text-align: center;
+        margin: 20px 0;
+        font-size: 2.2rem;
+        color: #2c3e50;
+        position: relative;
+        padding-bottom: 15px;
+    }
+
+    /* Add a decorative underline */
+    .dashboard-header h1::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background: linear-gradient(90deg, #4361ee, #4cc9f0);
+        border-radius: 2px;
+    }
+
+    /* Style the refresh section */
+    .refresh-section {
+        text-align: center;
+        margin: 15px 0;
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+
+    /* Add some animation to the refresh */
+    .refresh-section:hover {
+        color: #4361ee;
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    /* Base Styles */
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 25px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: var(--text);
+        background-color: var(--bg);
+    }
+
+    h2,
+    h3,
+    h4 {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    i {
+        margin-right: 8px;
+        color: var(--accent);
+    }
+
+    /* Filters Section */
+    .filters-section {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .filter-group h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.4rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-item {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .filter-item label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .select2,
+    .date-picker {
+        width: 100% !important;
+        padding: 12px 15px;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .select2-selection,
+    .select2-selection--multiple {
+        border: none !important;
+        min-height: auto !important;
+    }
+
+    .select2-selection__choice {
+        background-color: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        color: white;
+        box-shadow: 0 4px 14px rgba(67, 97, 238, 0.3);
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+    }
+
+    .btn-secondary {
+        background: white;
+        color: var(--primary);
+        border: 2px solid var(--primary);
+    }
+
+    .btn-secondary:hover {
+        background: rgba(67, 97, 238, 0.05);
+    }
+
+    /* Team Overview */
+    .team-overview {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+    }
+
+    .team-overview h3 {
+        margin-top: 0;
+        margin-bottom: 25px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        border-top: 4px solid var(--accent);
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .metric-label {
+        color: var(--text);
+        font-size: 1rem;
+        font-weight: 500;
+        opacity: 0.8;
+    }
+
+    /* Individual Performance */
+    .individual-performance {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 30px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+    }
+
+    .individual-performance h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+    }
+
+    .performance-selector {
+        margin-bottom: 25px;
+    }
+
+    #individual-stats {
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(248, 249, 250, 0.5);
+        border-radius: 12px;
+        padding: 30px;
+    }
+
+    .no-selection {
+        text-align: center;
+        color: var(--text);
+        opacity: 0.6;
+    }
+
+    .no-selection i {
+        font-size: 3rem;
+        color: var(--accent);
+        margin-bottom: 15px;
+    }
+
+    .no-selection p {
+        margin: 0;
+        font-size: 1.1rem;
+    }
+
+    .loading {
+        text-align: center;
+        color: var(--accent);
+        font-weight: 500;
+    }
+
+    .individual-header {
+        margin-bottom: 25px;
+    }
+
+    .individual-header h4 {
+        margin: 0 0 5px 0;
+        font-size: 1.3rem;
+    }
+
+    .intern-email {
+        color: var(--text);
+        opacity: 0.7;
+        font-size: 0.9rem;
+    }
+
+    .individual-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .individual-metric {
+        background: rgba(72, 149, 239, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .individual-metric .metric-value {
+        font-size: 1.8rem;
+        margin-bottom: 5px;
+    }
+
+    .individual-metric .metric-label {
+        font-size: 0.9rem;
+    }
+
+    .individual-charts {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    /* Charts Section */
+    .charts-section {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+    }
+
+    .chart-card h4 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 1.2rem;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 1024px) {
+
+        .individual-charts,
+        .charts-section {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .filter-row {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .filter-item {
+            min-width: 100%;
+        }
+
+        .metrics-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-container {
+            padding: 15px;
+        }
+
+        .filters-section,
+        .team-overview,
+        .individual-performance,
+        .chart-card {
+            padding: 20px;
+        }
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .metric-card,
+    .chart-card {
+        animation: fadeIn 0.5s ease forwards;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--accent);
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary);
+    }
+
+    /* Tooltip styling */
+    .chartjs-tooltip {
+        background: rgba(0, 0, 0, 0.7) !important;
+        border-radius: 8px !important;
+        padding: 10px 15px !important;
+        color: white !important;
+        font-family: 'Inter' !important;
+    }
+
+    /* Select2 custom styling */
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--accent) !important;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow b {
+        border-color: var(--primary) transparent transparent transparent !important;
+    }
+</style>
+{% endblock %}
+{% endblock %}

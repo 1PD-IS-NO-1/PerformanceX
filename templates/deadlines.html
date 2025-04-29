@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Deadline Performance{% endblock %}
+
+{% block content %}
+<div class="deadlines-container">
+    <h1>Deadline Performance Analysis</h1>
+    
+    <div class="deadline-stats-grid">
+        {% for email, stats in deadline_stats.items() %}
+        <div class="deadline-card">
+            <div class="card-header">
+                <h3>{{ email }}</h3>
+            </div>
+            <div class="card-body">
+                <div class="stat-item">
+                    <span class="stat-label">Average Days:</span>
+                    <span class="stat-value">{{ stats['mean']|round(1) if stats['mean'] is not none else 'N/A' }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Best:</span>
+                    <span class="stat-value">{{ stats['min']|round(1) if stats['min'] is not none else 'N/A' }} days</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Worst:</span>
+                    <span class="stat-value">{{ stats['max']|round(1) if stats['max'] is not none else 'N/A' }} days</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Tasks Completed:</span>
+                    <span class="stat-value">{{ stats['count'] if stats['count'] is not none else 0 }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

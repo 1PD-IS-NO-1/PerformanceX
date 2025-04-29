@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: my-flask-app
+    env: python
+    plan: free
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: YOUR_SECRET_KEY
+        value: your_secret_value

@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Performance Insights{% endblock %}
+
+{% block content %}
+<div class="insights-container">
+    <h2>Performance Insights for <span id="insight-email">{{ email }}</span></h2>
+    
+    <div class="insight-section">
+        <h3>Performance Overview</h3>
+        <div id="performance-metrics" class="metrics-grid"></div>
+    </div>
+    
+    <div class="insight-section">
+        <h3>Task Analysis</h3>
+        <div class="chart-row">
+            <div id="task-distribution-chart" class="chart"></div>
+            <div id="completion-trend-chart" class="chart"></div>
+        </div>
+    </div>
+    
+    <div class="insight-section">
+        <h3>Detailed Insights</h3>
+        <div id="detailed-insights" class="insights-text"></div>
+    </div>
+    
+    <div class="insight-section">
+        <h3>Behavioral Feedback</h3>
+        <button id="load-behavior" class="btn">Generate Behavioral Insights</button>
+        <div id="behavioral-insights" class="insights-text"></div>
+        <a id="download-insights" class="btn" style="display:none;">Download Full Report</a>
+    </div>
+    
+    <div class="action-buttons">
+        <a href="/dashboard" class="btn secondary">Back to Dashboard</a>
+        <button id="export-report" class="btn">Export Complete Report</button>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const email = "{{ email }}";
+    const loadBehaviorBtn = document.getElementById('load-behavior');
+    const downloadInsightsBtn = document.getElementById('download-insights');
+    const exportReportBtn = document.getElementById('export-report');
+    
+    // Load performance data when page loads
+    fetchPerformanceData(email);
+    
+    loadBehaviorBtn.addEventListener('click', function() {
+        fetchBehavioralInsights(email);
+    });
+    
+    downloadInsightsBtn.addEventListener('click', function() {
+        downloadInsightsPdf();
+    });
+    
+    exportReportBtn.addEventListener('click', function() {
+        exportCompleteReport(email);
+    });
+    
+    function fetchPerformanceData(email) {
+        fetch('/get_performance_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            // Update performance metrics
+            document.getElementById('performance-metrics').innerHTML = `
+                <div class="metric-card">
+                    <h4>Completion Rate</h4>
+                    <p>${data.performance}%</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Days Present</h4>
+                    <p>${data.attendance}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Overall Score</h4>
+                    <p>${calculateOverallScore(data.performance, data.attendance)}</p>
+                </div>
+            `;
+
+            // Render charts
+            Plotly.newPlot('task-distribution-chart', JSON.parse(data.pie_graph));
+            Plotly.newPlot('completion-trend-chart', JSON.parse(data.bar_graph));
+
+            // Display insights
+            document.getElementById('detailed-insights').textContent = data.insights;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load performance data');
+        });
+    }
+    
+    function fetchBehavioralInsights(email) {
+        fetch('/get_behavior_insights', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            document.getElementById('behavioral-insights').textContent = data.insights;
+            downloadInsightsBtn.style.display = 'inline-block';
+            downloadInsightsBtn.setAttribute('data-pdf', data.pdf_data);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to get behavioral insights');
+        });
+    }
+    
+    function downloadInsightsPdf() {
+        const pdfData = downloadInsightsBtn.getAttribute('data-pdf');
+        if (!pdfData) return;
+        
+        fetch('/download_insights', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                pdf_data: pdfData,
+                email: email
+            })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${email}_insights.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to download PDF');
+        });
+    }
+    
+    function exportCompleteReport(email) {
+        // This would generate a comprehensive PDF report
+        alert(`Exporting complete report for ${email}`);
+        // Implementation would depend on your PDF generation requirements
+    }
+    
+    function calculateOverallScore(performance, attendance) {
+        // Simple calculation for demo purposes
+        const score = (performance * 0.7) + (attendance * 0.3);
+        return Math.round(score);
+    }
+});
+</script>
+{% endblock %}

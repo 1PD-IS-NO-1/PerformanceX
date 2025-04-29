@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome to PerformanceX{% endblock %}
+
+{% block content %}
+<div class="welcome-container">
+    <div class="welcome-card">
+        <h1>Welcome to PerformanceX</h1>
+        <p class="subtitle">Comprehensive performance analytics for your team</p>
+        
+        <div class="quick-stats">
+            <div class="stat-item">
+                <span class="stat-value">{{ metrics.total_interns if metrics else '0' }}</span>
+                <span class="stat-label">Total Interns</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">{{ "%.1f"|format(metrics.avg_hours) if metrics else '0' }}</span>
+                <span class="stat-label">Avg Hours/Day</span>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('dashboard') }}" class="btn-primary">
+                Go to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
